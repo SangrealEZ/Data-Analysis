@@ -1,0 +1,67 @@
+# Bank Case
+# This case is based around a real world dataset about telemarketing calls made by a Portuguese bank. You can find more information about this dataset here: https://archive.ics.uci.edu/ml/datasets/bank+marketing
+# The bank is interested in a predictive model because it will allow them to call the right customers at the right times. From an analytics perspective, the primary distinguishing feature in this case is that solving a predictive problem is directly useful to the firm.
+
+# load data
+bankData = read.csv('D:/Dropbox/Teaching Lectures/Bank Case.csv',stringsAsFactors=TRUE)
+# The str function lets you see a nice summary of the data.
+str(bankData)
+
+# The dependent variable we are interested in is y, which indicates whether the customer signed up for the new deposit account.
+bankData$y = bankData$y == 'yes'
+
+# Duration’ refers to how long the call was. The variable should be deleted from the analysis, as the firm does not know how long the call will be before they make it
+bankData$duration = NULL
+
+####################################################################################
+# start from some basic descriptive analysis to get a feel of the dataset
+####################################################################################
+# take a look at correlation
+library("corrplot")
+corrplot(cor(model.matrix(~.,data=bankData)))
+# Some obvious correlations are apparent in the correlation plot: 
+# Age is negatively correlated with marriage, but positively correlated with income. This gives some confidence in the integrity dataset.
+
+# use a linear model to get a feel of attribute importance
+summary(lm(y~.,data=bankData))
+anova(lm(y~.,data=bankData))
+# It turns out that seasonality is potentially very important here.
+# Furthermore, retired, single people are more likely to say yes. 
+# However, housing and loan seem unimportant. 
+
+# use Mars to see if there are any non-linear relationship
+library(earth)
+earth1 = earth(y~.,data=trainingData)
+plotmo(earth1)
+# We see that age has a non-linear relationship, and that retired individuals are more likely to say yes:
+
+library('leaps')
+basicSubset = regsubsets(y~.,data=bankData)
+basicSummary = summary(basicSubset)
+# looking at AIC, BIC
+bestAIC = which.min(basicSummary$cp)
+bestBIC = which.min(basicSummary$bic)
+coef(basicSubset,bestBIC)
+# We learn that retired individuals and students are more likely to say yes
+# March and September are the best times to call
+
+# Alternatively, use Lasso to shrink model
+library('glmnet')
+lassoFit = glmnet(model.matrix(~.,data=bankData[,-11]),bankData$y,alpha=1)
+plot(lassoFit,xvar='lambda',sub='The X-Axis is the penalty parameters (logged)')
+# In lasso, the coefficients depend on your choice of lambda. 
+# Higher lambda implies a higher penalty, which means the coefficients are smaller. 
+# This plot shows how the coefficients change with lambda. As lambda gets larger, more coefficients are forced to be 0. If lambda is close to 0, you get linear regression estimates.
+# In an explanatory analysis, we might want a high lambda so we can focus on the most important coefficients. 
+# For example, in this case lambda = .01 is a relatively high penalty term, which results in a model that is relatively easy to interpret:
+predict(lassoFit,s = .01, type = 'coefficients')
+
+####################################################################################
+# Predictive Modeling and Tuning
+####################################################################################
+
+# define traing and validataion dataset
+set.seed(1)
+isTraining = runif(nrow(bankData))<.8
+trainingData = subset(bankData,isTraining)
+validationData = subset(bankData,!isTraining)
