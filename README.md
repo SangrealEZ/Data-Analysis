@@ -7,3 +7,5 @@ Step-by-step Data Analysis
 
 3. Causal Analysis
 
+Dataset: marketing calls made by a bank
+
