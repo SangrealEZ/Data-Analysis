@@ -1,5 +1,5 @@
 # Data-Analysis
-Step-by-step Data Analysis
+This script caputures step-by-step Data Analysis.
 
 1. Explanatory Analysis
 
